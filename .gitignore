@@ -1,5 +1,45 @@
-node_modules/
-*.log
-.DS_Store
+# OpenClaw
+{{ openclaw_workspace}}/.gitignore
+
+{{ openclaw_workspace}}/MEMORY.md
+{{ openclaw_workspace}}/AGENTS.md
+{{ openclaw_workspace}}/SOUL.md
+{{ openclaw_workspace}}/USER.md
+{{ openclaw_workspace}}/TOOLS.md
+{{ openclaw_workspace}}/IDENTITY.md
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+)build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.tmp
+*.swp
+*.workspace
+
+# OS
+DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Output
+examples/*/output/
+*.png
+*.jpg
+*.jpeg
+
+# Secrets
+*.key
+*.pem
+.env
