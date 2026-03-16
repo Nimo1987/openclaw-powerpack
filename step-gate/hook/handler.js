@@ -1,11 +1,16 @@
 /**
- * Step Gate — Internal Hook Handler (v11)
+ * Step Gate — Internal Hook Handler (v12)
  *
  * This is an Internal Hook handler loaded by OpenClaw's hooks:loader.
  * It listens to `agent:bootstrap` events and injects STEP-GATE.md
  * into the agent's bootstrap context.
  *
- * Separate from the Plugin (which handles periodic checkbox sync).
+ * Separate from the Plugin (which handles periodic checkbox sync + auto-cleanup).
+ *
+ * v12 changes:
+ *   - ADDED: isEffectivelyDone() — if last step is done, task is finished
+ *     (prevents injecting zombie tasks into bootstrap context)
+ *   - UPDATED: generateBootstrap filters out effectively-done tasks
  */
 
 import * as fs from "node:fs";
@@ -84,6 +89,18 @@ function isFileCompleted(content) {
     header.includes("status: done") ||
     header.includes("status: 已完成")
   );
+}
+
+// ── v12: Check if task is effectively finished ────────────────────────────
+
+function isEffectivelyDone(steps) {
+  if (!steps.length) return false;
+  // All steps done
+  if (steps.every((s) => s.status === "done")) return true;
+  // Last step done — agent skipped ahead and delivered
+  const maxStep = steps.reduce((a, b) => (a.number > b.number ? a : b));
+  if (maxStep.status === "done") return true;
+  return false;
 }
 
 // ── Analyze a single todo file ────────────────────────────────────────────
@@ -169,8 +186,13 @@ function findTodos(dir) {
 // ── Generate STEP-GATE.md content ─────────────────────────────────────────
 
 function generateBootstrap(todos, minSteps) {
+  // v12: also filter out effectively-done tasks (last step done = finished)
   const active = todos.filter(
-    (t) => !t.fileCompleted && t.total >= minSteps && t.done < t.total,
+    (t) =>
+      !t.fileCompleted &&
+      t.total >= minSteps &&
+      t.done < t.total &&
+      !isEffectivelyDone(t.steps),
   );
   if (!active.length) return null;
 
@@ -226,13 +248,22 @@ const stepGateBootstrapHandler = async (event) => {
 
   const todos = findTodos(workspaceDir);
   const completedCount = todos.filter((t) => t.fileCompleted).length;
-  D(`found ${todos.length} todos (${completedCount} completed)`);
+  const effectivelyDoneCount = todos.filter((t) => isEffectivelyDone(t.steps)).length;
+  D(`found ${todos.length} todos (${completedCount} completed, ${effectivelyDoneCount} effectively done)`);
 
   if (!todos.length) return;
 
   const content = generateBootstrap(todos, MIN_STEPS);
   if (!content) {
     D("no active todos need injection, skip");
+    // v12: clean up stale STEP-GATE.md if no active tasks
+    const fp = path.join(workspaceDir, "STEP-GATE.md");
+    try {
+      if (fs.existsSync(fp)) {
+        fs.unlinkSync(fp);
+        D("removed stale STEP-GATE.md");
+      }
+    } catch {}
     return;
   }
 

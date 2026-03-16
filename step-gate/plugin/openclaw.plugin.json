@@ -1,0 +1,11 @@
+{
+  "name": "step-gate",
+  "version": "12.0.0",
+  "description": "Periodic checkbox sync + auto-cleanup for step-gate todo files",
+  "entry": "index.ts",
+  "config": {
+    "minSteps": 3,
+    "syncInterval": 15000,
+    "staleHours": 6
+  }
+}
